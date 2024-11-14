@@ -1,9 +1,12 @@
 package com.leminhbao.cashcard;
 
+
+import org.assertj.core.util.Arrays;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.json.JsonTest;
-import org.springframework.boot.test.json.*;
+import org.springframework.boot.test.json.JacksonTester;
 
 import java.io.IOException;
 
@@ -15,40 +18,61 @@ class CashCardJsonTest {
     @Autowired
     private JacksonTester<CashCard> json;
 
+    @Autowired
+    private JacksonTester<CashCard[]> jsonList;
+
+    private CashCard[] cashCards;
+
+    @BeforeEach
+    void setUp() {
+        cashCards = Arrays.array(
+                new CashCard(99L, 123.45, "sarah1"),
+                new CashCard(100L, 1.00, "sarah1"),
+                new CashCard(101L, 150.00, "sarah1"));
+    }
+
     @Test
     void cashCardSerializationTest() throws IOException {
-        CashCard cashCard = new CashCard(99L, 123.45);
-
-        JsonContentAssert jsonContentAssert = assertThat(json.write(cashCard));
-
-        // Compare the JSON content with the expected JSON content in the file "expected.json"
-        jsonContentAssert.isStrictlyEqualToJson("expected.json");
-
-        // Compare the JSON content with the expected JSON content in the file "expected.json" using JSON path
-        jsonContentAssert.hasJsonPathNumberValue("@.id");
-        jsonContentAssert.extractingJsonPathNumberValue("@.id").isEqualTo(99);
-
-        // Compare the JSON content with the expected JSON content in the file "expected.json" using JSON path
-        jsonContentAssert.hasJsonPathNumberValue("@.amount");
-        jsonContentAssert.extractingJsonPathNumberValue("@.amount").isEqualTo(123.45);
+        CashCard cashCard = cashCards[0];
+        assertThat(json.write(cashCard)).isStrictlyEqualToJson("single.json");
+        assertThat(json.write(cashCard)).hasJsonPathNumberValue("@.id");
+        assertThat(json.write(cashCard)).extractingJsonPathNumberValue("@.id")
+                .isEqualTo(99);
+        assertThat(json.write(cashCard)).hasJsonPathNumberValue("@.amount");
+        assertThat(json.write(cashCard)).extractingJsonPathNumberValue("@.amount")
+                .isEqualTo(123.45);
     }
 
     @Test
     void cashCardDeserializationTest() throws IOException {
         String expected = """
-                        {
-                            "id": 99,
-                            "amount": 123.45
-                        }
-                        """;
-
-        ObjectContent<CashCard> jsonContent = json.parse(expected);
-
-        // Parse the JSON content and compare it with the expected CashCard object
-        assertThat(jsonContent).isEqualTo(new CashCard( 99L, 123.45));
-
-        // Parse the JSON content to a CashCard object and compare its properties with the expected values
-        assertThat(json.parseObject(expected).id()).isEqualTo(99L);
+                {
+                    "id": 99,
+                    "amount": 123.45,
+                    "owner": "sarah1"
+                }
+                """;
+        assertThat(json.parse(expected))
+                .isEqualTo(new CashCard(99L, 123.45, "sarah1"));
+        assertThat(json.parseObject(expected).id()).isEqualTo(99);
         assertThat(json.parseObject(expected).amount()).isEqualTo(123.45);
+    }
+
+    @Test
+    void cashCardListSerializationTest() throws IOException {
+        assertThat(jsonList.write(cashCards)).isStrictlyEqualToJson("list.json");
+    }
+
+    @Test
+    void cashCardListDeserializationTest() throws IOException {
+        String expected = """
+                [
+                    { "id": 99, "amount": 123.45, "owner": "sarah1" },
+                    { "id": 100, "amount": 1.0, "owner": "sarah1" },
+                    { "id": 101, "amount": 150.0, "owner": "sarah1" }
+                ]
+                """;
+
+        assertThat(jsonList.parse(expected)).isEqualTo(cashCards);
     }
 }
